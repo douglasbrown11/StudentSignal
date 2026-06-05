@@ -1,12 +1,17 @@
-const TOKEN_URL = 'https://api.criticalasset.com/oauth/token';
-const GRAPHQL_URL = 'https://api.criticalasset.com/api';
-const REQUESTED_SCOPES = ['workorders:read', 'assets:read', 'locations:read'].join(' ');
+const DEFAULT_GRAPHQL_URL = 'https://company-dev.criticalasset.com/api';
+const DEFAULT_SCOPES = ['workorders.read', 'assets.read', 'locations.read'].join(' ');
 const TOKEN_REFRESH_SKEW_MS = 60_000;
 
 type TokenResponse = {
-  access_token: string;
-  expires_in?: number;
-  token_type?: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenType?: string;
+  expiresIn?: number;
+  scope?: string;
+};
+
+type ApplicationTokenResponse = {
+  applicationClientCredentialsToken: TokenResponse;
 };
 
 type TokenCache = {
@@ -22,22 +27,10 @@ type GraphQLResponse<TData> = {
 export type CriticalAssetWorkOrder = {
   id: string;
   title: string;
-  status: string;
-  priority: string;
-  createdAt: string;
-  dueDate: string | null;
-  asset: {
-    id: string;
-    name: string;
-    category: string | null;
-  } | null;
-  location: {
-    id: string;
-    locationName: string;
-    address: string | null;
-  } | null;
-  assignee: {
-    id: string;
+  description: string | null;
+  severity: string | null;
+  executionPriority: string | null;
+  workOrderStage: {
     name: string;
   } | null;
 };
@@ -56,21 +49,35 @@ function requireEnv(name: string): string {
 async function requestToken(): Promise<TokenCache> {
   const clientId = requireEnv('CA_CLIENT_ID');
   const clientSecret = requireEnv('CA_CLIENT_SECRET');
+  const graphqlUrl = process.env.CA_GRAPHQL_URL ?? DEFAULT_GRAPHQL_URL;
+  const scope = process.env.CA_SCOPES ?? DEFAULT_SCOPES;
 
-  const body = new URLSearchParams({
-    grant_type: 'client_credentials',
-    client_id: clientId,
-    client_secret: clientSecret,
-    scope: REQUESTED_SCOPES,
-  });
-
-  const response = await fetch(TOKEN_URL, {
+  const response = await fetch(graphqlUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    body,
+    body: JSON.stringify({
+      query: /* GraphQL */ `
+        mutation ApplicationToken($input: ApplicationClientCredentialsInput!) {
+          applicationClientCredentialsToken(input: $input) {
+            accessToken
+            refreshToken
+            tokenType
+            expiresIn
+            scope
+          }
+        }
+      `,
+      variables: {
+        input: {
+          clientId,
+          clientSecret,
+          scope,
+        },
+      },
+    }),
     cache: 'no-store',
   });
 
@@ -79,14 +86,19 @@ async function requestToken(): Promise<TokenCache> {
     throw new Error(`CriticalAsset token request failed (${response.status}): ${details}`);
   }
 
-  const payload = (await response.json()) as TokenResponse;
-  if (!payload.access_token) {
+  const payload = (await response.json()) as GraphQLResponse<ApplicationTokenResponse>;
+  if (payload.errors?.length) {
+    throw new Error(payload.errors.map((error) => error.message).join('; '));
+  }
+
+  const token = payload.data?.applicationClientCredentialsToken;
+  if (!token?.accessToken) {
     throw new Error('CriticalAsset token response did not include an access token.');
   }
 
-  const expiresInSeconds = Number(payload.expires_in ?? 3600);
+  const expiresInSeconds = Number(token.expiresIn ?? 3600);
   return {
-    accessToken: payload.access_token,
+    accessToken: token.accessToken,
     expiresAt: Date.now() + expiresInSeconds * 1000,
   };
 }
@@ -120,8 +132,9 @@ export async function criticalAssetGraphQL<TData>(
   variables: Record<string, unknown> = {},
 ): Promise<TData> {
   const accessToken = await getCriticalAssetAccessToken();
+  const graphqlUrl = process.env.CA_GRAPHQL_URL ?? DEFAULT_GRAPHQL_URL;
 
-  const response = await fetch(GRAPHQL_URL, {
+  const response = await fetch(graphqlUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -152,32 +165,26 @@ export async function criticalAssetGraphQL<TData>(
 const FETCH_WORK_ORDERS_QUERY = /* GraphQL */ `
   query FetchWorkOrders($limit: Int!) {
     workOrders(limit: $limit) {
-      id
-      title
-      status
-      priority
-      createdAt
-      dueDate
-      asset {
+      totalCount
+      nodes {
         id
-        name
-        category
-      }
-      location {
-        id
-        locationName
-        address
-      }
-      assignee {
-        id
-        name
+        title
+        description
+        severity
+        executionPriority
+        workOrderStage {
+          name
+        }
       }
     }
   }
 `;
 
 type WorkOrdersResponse = {
-  workOrders: CriticalAssetWorkOrder[];
+  workOrders: {
+    totalCount: number;
+    nodes: CriticalAssetWorkOrder[];
+  };
 };
 
 export async function fetchWorkOrders(limit = 25): Promise<CriticalAssetWorkOrder[]> {
@@ -186,5 +193,5 @@ export async function fetchWorkOrders(limit = 25): Promise<CriticalAssetWorkOrde
     limit: safeLimit,
   });
 
-  return data.workOrders ?? [];
+  return data.workOrders.nodes ?? [];
 }
