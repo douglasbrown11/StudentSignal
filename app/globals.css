@@ -148,3 +148,71 @@ tbody tr.selected { background: #243042; }
 
 .muted { color: var(--muted); }
 .loading { color: var(--muted); padding: 40px; text-align: center; }
+
+/* Intake modal */
+.intake {
+  width: 560px; max-width: 94vw; height: 100%; margin-left: auto;
+  background: var(--panel); border-left: 1px solid var(--border);
+  padding: 22px; overflow-y: auto;
+}
+.intake .close { float: right; background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; }
+.intake h3 { margin: 0 28px 4px 0; font-size: 19px; }
+.intake textarea {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: inherit; resize: vertical;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid2 > div { display: flex; flex-direction: column; gap: 6px; }
+
+.spinner {
+  width: 34px; height: 34px; margin: 0 auto; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Report */
+.report-head { display: flex; justify-content: space-between; align-items: center; }
+.esc-banner {
+  background: rgba(255,92,92,0.14); border: 1px solid var(--overdue); color: #ffb4b4;
+  padding: 10px 12px; border-radius: 8px; margin: 12px 0; font-size: 13px;
+}
+.pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 6px; }
+.pill { display: inline-flex; flex-direction: column; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; }
+.pill-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.pill-v { font-size: 13px; font-weight: 600; text-transform: capitalize; }
+.pill.danger { border-color: var(--overdue); } .pill.danger .pill-v { color: var(--overdue); }
+.pill.warn { border-color: var(--progress); } .pill.warn .pill-v { color: var(--progress); }
+.pill.ok { border-color: var(--done); } .pill.ok .pill-v { color: var(--done); }
+
+.rsec { margin-top: 16px; }
+.rsec h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin: 0 0 6px; }
+.rsec p { margin: 0; font-size: 13px; line-height: 1.5; }
+.rsec ul, .rsec ol { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.rsec li { margin-bottom: 3px; }
+.report-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .report-cols, .grid2 { grid-template-columns: 1fr; } }
+
+.oblig { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; }
+.oblig-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-bottom: 3px; }
+.oblig-src { color: var(--accent); font-size: 11px; white-space: nowrap; }
+
+.checklist { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; }
+.checklist-h { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 6px; }
+.check { display: block; font-size: 13px; margin-bottom: 5px; cursor: pointer; }
+.check input { accent-color: var(--accent); margin-right: 6px; }
+
+.student-msg { background: rgba(79,156,249,0.1); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 6px; }
+
+.closure { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+.closure-q { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.closure-btns { display: flex; gap: 10px; }
+.closure-result { padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+.closure-result.ok { background: rgba(63,185,80,0.15); color: var(--done); }
+.closure-result.bad { background: rgba(255,92,92,0.15); color: var(--overdue); }
+
+.intake-launch {
+  background: linear-gradient(135deg, #4f9cf9, #6e7bf2); color: #fff; border: none;
+  border-radius: 8px; padding: 9px 14px; font-weight: 600; cursor: pointer; font-size: 13px;
+}
+.act-btn { background: var(--accent); color: #06121f; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; font-size: 13px; margin-top: 6px; }
