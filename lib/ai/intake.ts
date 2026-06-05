@@ -20,6 +20,8 @@ export interface FieldObservation {
   disruption?: string;
   happenedBefore?: string;
   photoNote?: string;
+  photoBase64?: string;
+  photoMimeType?: string;
 }
 
 const SYSTEM = `You are a facilities field-intelligence analyst for a school district / public-agency facilities team.
@@ -68,7 +70,7 @@ export async function generateReport(args: {
       }
     : "(No existing work order — this is a brand-new field observation.)";
 
-  const userContent = [
+  const textContent = [
     "Produce a Field Intelligence Report for the following.",
     "",
     block("EXISTING WORK ORDER + LINKED ASSET/LOCATION CONTEXT", woContext),
@@ -81,7 +83,9 @@ export async function generateReport(args: {
       whoAffected: observation.whoAffected || "(not specified)",
       howDisruptive: observation.disruption || "(not specified)",
       hasHappenedBefore: observation.happenedBefore || "(not specified)",
-      photoOrNote: observation.photoNote || "(none)",
+      photoOrNote: observation.photoBase64
+        ? "A photo has been attached — analyze it carefully and incorporate visible details into your assessment."
+        : observation.photoNote || "(none)",
     }),
     "",
     block("PUBLIC DATA AVAILABLE (NYC 311 open data — citywide pattern data, may not be this exact building)", {
@@ -92,12 +96,29 @@ export async function generateReport(args: {
     }),
   ].join("\n");
 
+  // Build message content — include the photo as a vision block if provided.
+  type SupportedMime = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+  const SUPPORTED_MIMES: SupportedMime[] = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  const rawMime = observation.photoMimeType ?? "image/jpeg";
+  const safeMime: SupportedMime = (SUPPORTED_MIMES as string[]).includes(rawMime)
+    ? (rawMime as SupportedMime)
+    : "image/jpeg";
+
+  const userContentBlocks: Anthropic.MessageParam["content"] = [];
+  if (observation.photoBase64) {
+    (userContentBlocks as any[]).push({
+      type: "image",
+      source: { type: "base64", media_type: safeMime, data: observation.photoBase64 },
+    });
+  }
+  (userContentBlocks as any[]).push({ type: "text", text: textContent });
+
   const message = await client.messages.parse({
     model: "claude-sonnet-4-6",
     max_tokens: 6000,
     thinking: { type: "adaptive" },
     system: SYSTEM,
-    messages: [{ role: "user", content: userContent }],
+    messages: [{ role: "user" as const, content: userContentBlocks }],
     output_config: { format: zodOutputFormat(ReportSchema), effort: "medium" },
   });
 

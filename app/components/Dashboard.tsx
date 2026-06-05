@@ -128,29 +128,28 @@ export default function Dashboard() {
 
   return (
     <div className="app">
-      <div className="header">
-        <div>
-          <h1>
-            Student<span className="brand-accent">Signals</span>
-          </h1>
-          <div className="sub">Work orders · CriticalAsset · 350 Grand staging</div>
+      <nav className="navbar">
+        <div className="navbar-brand">
+          <div className="navbar-logo">
+            <span className="navbar-logo-icon">S</span>
+          </div>
+          <div>
+            <div className="navbar-name">Student<span className="brand-accent">Signals</span></div>
+            <div className="navbar-tagline">NYC Facilities Intelligence · 350 Grand St</div>
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <button className="create-launch" onClick={() => setCreateOpen(true)}>
-            ➕ New work order
-          </button>
-          <button className="cluster-launch" onClick={() => setClusterOpen(true)}>
-            🧩 Group similar (AI)
-          </button>
-          <button className="intake-launch" onClick={() => openIntake(exitSignId)}>
-            ⚡ Field Intake (AI)
-          </button>
+        <div className="navbar-actions">
+          <button className="hdr-btn hdr-btn-ghost" onClick={() => setClusterOpen(true)}>Group similar</button>
+          <button className="hdr-btn hdr-btn-ghost" onClick={() => setCreateOpen(true)}>Create work order</button>
+          <button className="hdr-btn hdr-btn-primary" onClick={() => openIntake(exitSignId)}>Report a problem</button>
           <label className="toggle">
             <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
-            Show demo data
+            Demo
           </label>
         </div>
-      </div>
+      </nav>
+
+      <HeroBanner onReport={() => openIntake(exitSignId)} />
 
       {liveError && (
         <div className="banner">
@@ -161,16 +160,20 @@ export default function Dashboard() {
 
       <div className="counters">
         <div className="counter open">
-          <div className="label">Open</div>
           <div className="value">{counts.open}</div>
+          <div className="label">Open</div>
         </div>
         <div className="counter progress">
-          <div className="label">In Progress</div>
           <div className="value">{counts.inProgress}</div>
+          <div className="label">In Progress</div>
         </div>
         <div className="counter overdue">
-          <div className="label">Overdue ⚠</div>
           <div className="value">{counts.overdue}</div>
+          <div className="label">Overdue</div>
+        </div>
+        <div className="counter signals">
+          <div className="value">{workOrders.reduce((n, w) => n + w.signals.length, 0)}</div>
+          <div className="label">Field Signals</div>
         </div>
       </div>
 
@@ -246,20 +249,21 @@ export default function Dashboard() {
                 {tableRows.map((w) => (
                   <tr
                     key={w.id}
-                    className={w.id === selectedId ? "selected" : ""}
+                    className={[w.id === selectedId ? "selected" : "", w.isOverdue ? "row-overdue" : ""].filter(Boolean).join(" ")}
                     onClick={() => setSelectedId(w.id)}
                   >
                     <td className="title-cell">
                       {w.title}
                       {w.source === "demo" && <span className="demo-tag">demo</span>}
                       {w.source === "user" && <span className="user-tag">yours</span>}
-                      {w.signals.length > 0 && <span className="sig-badge">💬 {w.signals.length}</span>}
+                      {w.signals.length > 0 && <span className="sig-badge">{w.signals.length} signal{w.signals.length > 1 ? "s" : ""}</span>}
+                      <SignalQuality workOrder={w} />
                     </td>
                     <td>
                       <span className={`badge s-${w.status.replace(" ", ".")}`}>{w.status}</span>
                       {w.isOverdue && <span className="badge s-overdue" style={{ marginLeft: 4 }}>overdue</span>}
                     </td>
-                    <td className={`p-${w.priority}`}>{w.priority}</td>
+                    <td><span className={`prio-dot p-${w.priority}`} /><span className={`p-${w.priority}`}>{w.priority}</span></td>
                     <td>{w.assets[0]?.name ?? "—"}</td>
                     <td>{w.location?.name ?? "—"}</td>
                     <td>{fmtDate(w.dueDate)}</td>
@@ -371,7 +375,7 @@ function DetailPanel({
         </button>
         <h3>{w.title}</h3>
         <button className="act-btn" onClick={onAct}>
-          ⚡ Act on this with AI — capture field truth
+          Add field signal to this work order
         </button>
         <div className="meta-row">
           <span className={`badge s-${w.status.replace(" ", ".")}`}>{w.status}</span>
@@ -447,14 +451,8 @@ function SignalForm({
   const submit = async () => {
     setError(null);
     const target = openWorkOrders.find((w) => w.id === workOrderId);
-    if (!target) {
-      setError("Pick a work order.");
-      return;
-    }
-    if (!text.trim()) {
-      setError("Enter an observation.");
-      return;
-    }
+    if (!target) { setError("Pick a work order."); return; }
+    if (!text.trim()) { setError("Enter an observation."); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/signals", {
@@ -466,9 +464,7 @@ function SignalForm({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? `HTTP ${res.status}`);
       }
-      setText("");
-      setName("");
-      setWorkOrderId("");
+      setText(""); setName(""); setWorkOrderId("");
       onSubmitted(target);
     } catch (e) {
       setError((e as Error).message);
@@ -486,12 +482,10 @@ function SignalForm({
           <option value="">Select an open work order…</option>
           {openWorkOrders.map((w) => (
             <option key={w.id} value={w.id}>
-              {w.title}
-              {w.location?.name ? ` — ${w.location.name}` : ""}
+              {w.title}{w.location?.name ? ` — ${w.location.name}` : ""}
             </option>
           ))}
         </select>
-
         <label>Observation</label>
         <input
           type="text"
@@ -501,15 +495,69 @@ function SignalForm({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
         />
-
         <label>Your name (optional)</label>
         <input type="text" placeholder="Anonymous" value={name} onChange={(e) => setName(e.target.value)} />
-
         {error && <div style={{ color: "var(--overdue)", fontSize: 12 }}>{error}</div>}
-
         <button className="btn" disabled={submitting} onClick={submit}>
           {submitting ? "Submitting…" : "Submit signal"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function SignalQuality({ workOrder: w }: { workOrder: WorkOrder }) {
+  const score =
+    (w.signals.length > 0 ? 2 : 0) +
+    ((w.description?.length ?? 0) > 50 ? 1 : 0) +
+    (w.assets.length > 0 ? 1 : 0);
+  if (score >= 3) return null; // good enough — no badge needed
+  const label = score === 0 ? "no signal" : score === 1 ? "weak" : "partial";
+  const cls = score === 0 ? "sq-none" : score === 1 ? "sq-weak" : "sq-partial";
+  return <span className={`sq-badge ${cls}`}>{label}</span>;
+}
+
+function HeroBanner({ onReport }: { onReport: () => void }) {
+  return (
+    <div className="hero">
+      <div className="hero-left">
+        <div className="hero-eyebrow">NYC · The City Hacks The State · Challenge 02</div>
+        <h2 className="hero-headline">
+          Work orders capture what someone managed to write down.<br />
+          <span className="hero-highlight">StudentSignals captures what actually happened.</span>
+        </h2>
+        <p className="hero-body">
+          Students and teachers report problems in plain English. Our system structures the signal, surfaces compliance obligations, matches prior history, and gives operators a clear next action — in seconds.
+        </p>
+        <button className="hero-cta" onClick={onReport}>Report a problem now →</button>
+      </div>
+
+      <div className="hero-right">
+        <div className="hero-before-after">
+          <div className="hero-card hero-before">
+            <div className="hero-card-label">Before — work order as filed</div>
+            <div className="hero-card-wo-title">HVAC Complaint</div>
+            <div className="hero-card-wo-desc">"Room too hot."</div>
+            <div className="hero-card-meta">
+              <span className="hero-meta-pill grey">priority: medium</span>
+              <span className="hero-meta-pill grey">no location</span>
+              <span className="hero-meta-pill grey">no context</span>
+            </div>
+          </div>
+
+          <div className="hero-arrow">→</div>
+
+          <div className="hero-card hero-after">
+            <div className="hero-card-label">After — field signal analyzed</div>
+            <div className="hero-card-wo-title">HVAC Comfort / Ventilation Issue</div>
+            <div className="hero-card-wo-desc">Room 304 — 28 students affected, 3 days recurring, headaches reported</div>
+            <div className="hero-card-meta">
+              <span className="hero-meta-pill red">CRITICAL</span>
+              <span className="hero-meta-pill amber">act today</span>
+              <span className="hero-meta-pill blue">HVAC team</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

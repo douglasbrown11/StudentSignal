@@ -53,7 +53,7 @@ export default function ChatBot({ demo }: { demo: boolean }) {
   if (!open) {
     return (
       <button className="chat-fab" onClick={() => setOpen(true)} title="Ask the dashboard">
-        💬 Ask the dashboard
+        Ask the dashboard
       </button>
     );
   }
@@ -63,7 +63,7 @@ export default function ChatBot({ demo }: { demo: boolean }) {
       <div className="chat-head">
         <div>
           <b>Dashboard Assistant</b>
-          <span className="chat-model">Haiku 4.5</span>
+          <span className="chat-model">AI</span>
         </div>
         <button className="chat-x" onClick={() => setOpen(false)}>
           ×

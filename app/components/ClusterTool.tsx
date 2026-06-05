@@ -122,7 +122,7 @@ export default function ClusterTool({
               Analyzing {active?.workOrders.length} work orders across {active?.buildingCount} buildings…
             </div>
             <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-              Sonnet 4.6 is looking for a shared root cause and the most efficient response.
+              Looking for a shared root cause and the most efficient response.
             </div>
           </div>
         )}
@@ -166,7 +166,7 @@ function AnalysisView({
 
       {esc?.shouldEscalate && (
         <div className="esc-banner">
-          ⚠ Escalate — <b>{esc.level}</b>: {esc.reason}
+          Escalate — <b>{esc.level}</b>: {esc.reason}
         </div>
       )}
 

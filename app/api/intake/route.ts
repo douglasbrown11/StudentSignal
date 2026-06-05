@@ -19,7 +19,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const observation: FieldObservation = body?.observation ?? {};
+  const observation: FieldObservation = {
+    ...(body?.observation ?? {}),
+    photoBase64: body?.photoBase64 ?? undefined,
+    photoMimeType: body?.photoMimeType ?? undefined,
+  };
   if (!observation.text || !observation.text.trim()) {
     return NextResponse.json({ error: "observation.text is required" }, { status: 400 });
   }
