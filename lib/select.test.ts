@@ -74,7 +74,13 @@ describe("filterWorkOrders", () => {
   it("filters by building", () => {
     expect(filterWorkOrders(SAMPLE, { buildingId: "b1" })).toHaveLength(2);
   });
+  it("filters by category", () => {
+    expect(filterWorkOrders(SAMPLE, { category: "hvac" })).toHaveLength(2);
+    expect(filterWorkOrders(SAMPLE, { category: "plumbing" })).toHaveLength(1);
+  });
   it("combines filters", () => {
     expect(filterWorkOrders(SAMPLE, { status: "Open", buildingId: "b1" })).toHaveLength(2);
+    expect(filterWorkOrders(SAMPLE, { category: "hvac", status: "Open" })).toHaveLength(2);
+    expect(filterWorkOrders(SAMPLE, { category: "electrical", status: "Open" })).toHaveLength(0);
   });
 });

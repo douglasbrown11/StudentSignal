@@ -50,6 +50,7 @@ export default function Dashboard() {
 
   const [statusFilter, setStatusFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [buildingFilter, setBuildingFilter] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -84,9 +85,10 @@ export default function Dashboard() {
       filterWorkOrders(workOrders, {
         status: statusFilter || null,
         priority: priorityFilter || null,
+        category: categoryFilter || null,
         buildingId: buildingFilter,
       }),
-    [workOrders, statusFilter, priorityFilter, buildingFilter],
+    [workOrders, statusFilter, priorityFilter, categoryFilter, buildingFilter],
   );
 
   const selected = workOrders.find((w) => w.id === selectedId) ?? null;
@@ -155,6 +157,14 @@ export default function Dashboard() {
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.category} value={c.category}>
+                  {catLabel(c.category)} ({c.count})
+                </option>
+              ))}
+            </select>
             {buildingFilter && (
               <span className="muted">
                 Building: {buildingName ?? buildingFilter}{" "}
@@ -163,12 +173,13 @@ export default function Dashboard() {
                 </button>
               </span>
             )}
-            {(statusFilter || priorityFilter) && (
+            {(statusFilter || priorityFilter || categoryFilter) && (
               <button
                 className="clear"
                 onClick={() => {
                   setStatusFilter("");
                   setPriorityFilter("");
+                  setCategoryFilter("");
                 }}
               >
                 reset filters
@@ -243,7 +254,11 @@ export default function Dashboard() {
             <h2>By Category</h2>
             {categories.length === 0 && <div className="muted">No categories yet.</div>}
             {categories.map((c) => (
-              <div key={c.category} className="cat-row">
+              <div
+                key={c.category}
+                className={`cat-row clickable${categoryFilter === c.category ? " active" : ""}`}
+                onClick={() => setCategoryFilter(categoryFilter === c.category ? "" : c.category)}
+              >
                 <span className="cat-name">{catLabel(c.category)}</span>
                 <span className="cat-count">{c.count}</span>
               </div>

@@ -45,12 +45,18 @@ export function topBuildings(workOrders: WorkOrder[], n = 5): BuildingSummary[] 
 
 export function filterWorkOrders(
   workOrders: WorkOrder[],
-  opts: { status?: string | null; priority?: string | null; buildingId?: string | null },
+  opts: {
+    status?: string | null;
+    priority?: string | null;
+    buildingId?: string | null;
+    category?: string | null;
+  },
 ): WorkOrder[] {
   return workOrders.filter((w) => {
     if (opts.status && w.status !== opts.status) return false;
     if (opts.priority && w.priority !== opts.priority) return false;
     if (opts.buildingId && w.location?.id !== opts.buildingId) return false;
+    if (opts.category && w.category !== opts.category) return false;
     return true;
   });
 }
