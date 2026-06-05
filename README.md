@@ -1,96 +1,218 @@
 # StudentSignals
 
-A work-order dashboard for the **CriticalAsset** API. It reads work orders through
-its own backend (which holds the client secret and auto-refreshes the access token),
-enriches them with asset and location data, and lets students attach one-line
-observations ("signals") to open work orders.
+**NYC Facilities Intelligence Platform** — built for [The City Hacks The State](https://thecityhacksthestate.com) hackathon.
 
-## Features
+A work order is only a record of what someone managed to write down. **StudentSignals captures what actually happened** — by letting students, teachers, and custodians report problems in plain English, then using AI to turn that signal into a structured, compliance-aware intelligence report that gives facilities operators a clear next action.
 
-- **Counter row** — Open / In Progress / Overdue.
-- **Work-order table** — title · status · priority · asset · location · due date, with
-  **filters** by status and priority. Click a row for a detail panel.
-- **Detail panel** — full work order + linked asset(s) (status, last service date) +
-  location + attached student signals.
-- **Top 5 buildings** by open work orders (click to filter the table).
-- **Group by category** (`workOrderServiceCategory`).
-- **Student signals** — pick an open work order, submit a one-line observation; it's
-  stored locally and shown in the work order's detail panel and as a row badge.
-- **Demo data toggle** — merges a labeled mock dataset (5 buildings, several categories)
-  with the live data so the views have substance beyond the few real staging records.
+---
 
-### Challenge 02 — AI field-intake & workflow
+## The problem
 
-A work order is only a record of what someone captured. The **Field Intake (AI)** tool
-(launch from the header, or "Act on this with AI" inside a work-order detail panel) lets a
-student/field user report what's really happening in one sentence, and uses **Claude Opus
-4.8** (adaptive thinking, Zod-validated structured output) to turn it into a **Field
-Intelligence Report**:
+A facilities team at 350 Grand Street opens their work order queue and sees:
 
-- structured signal — issue type, severity, urgency, affected users, **evidence quality**,
-  likely root causes, **what the system still doesn't know**, follow-up questions
-- cleaned-up work-order description
-- **public-data context** — best-effort real **NYC 311** open-data lookup, translated into
-  operational meaning (and honest when records aren't relevant — it won't fabricate)
-- **compliance & obligations** to check before closure (fire code, NFPA, inspections, SOPs)
-- operational implications, recommended workflow, assignment group, **evidence checklist**
-- **escalation logic** (safety / recurrence / compliance / unresolved)
-- a plain-language **student status message** + a **closure verification question**, so the
-  reporter can later confirm whether reality actually changed (the closure loop).
+> *Room too hot.*
 
-Backend: `POST /api/intake` (resolve WO context → NYC 311 → one structured Claude call →
-persist), `PATCH /api/intake/:id` (closure). The Anthropic key stays server-side, never
-sent to the browser — same boundary as the CriticalAsset secret.
+That is the entire record. No location. No timeline. No severity. No context. The operator has no idea if this is one person having a warm afternoon or 28 students getting headaches three days running while a damper fails.
+
+**StudentSignals closes that gap.**
+
+---
+
+## What it does
+
+### Challenge 01 — Work Order Dashboard
+
+Connect to the **CriticalAsset API**, pull live work orders, and display them in a fully operational dashboard:
+
+- Filterable work-order table (status, priority, category, building)
+- Counter row: Open / In Progress / Overdue / Field Signals
+- Top 5 buildings by open work orders (click to filter)
+- Group by category
+- Work-order detail panel with linked assets, service history, and attached signals
+- Demo data toggle — merges a realistic mock dataset so the dashboard has substance beyond staging records
+- Signal quality badges — rows marked `no signal`, `weak`, or `partial` show which work orders are missing field context
+
+### Challenge 02 — Field Intelligence
+
+The core innovation. Takes a one-sentence field observation and produces a structured **Field Intelligence Report**:
+
+**Signal capture**
+- Student or teacher opens the intake from the header or from any work order's detail panel
+- Describes what they experienced in plain English — one sentence is enough
+- Optionally attaches a photo from their device (analyzed by the AI as visual evidence)
+- Marks whether it is still happening, how disruptive it is, and whether it has happened before
+- Submits in seconds — no long forms, no jargon
+
+**AI structuring (Claude Sonnet with adaptive thinking)**
+- Issue type, severity, urgency, asset category
+- Likely root causes (3–5 specific, operational candidates)
+- What the system still does not know — named explicitly
+- Recommended follow-up questions for the reporter
+- Cleaned-up work-order description ready to update the ticket
+- Evidence checklist for the responding technician
+- Suggested assignment group
+
+**Enrichment**
+- **NYC 311 open data** — real Socrata API query matching complaint type to asset category, translated into operational meaning (not just counts)
+- Historical work orders from the same building and category
+- Public data context is always translated into action — the AI is instructed never to fabricate records
+
+**Compliance and obligations**
+- Maps issue type to likely obligations (NYC Fire Code, NFPA, DOB, DOE SOP, Local Law 97)
+- Language is careful — "may require review" not legal advice
+- Shown as orange cards the operator must check before closing
+
+**Closure verification loop**
+- After the operator marks the issue resolved, the original reporter is asked: *"Was it actually fixed?"*
+- Three options: Yes, it's fixed / Still a problem / It's worse now
+- If not resolved: work order is flagged for re-inspection and escalated automatically
+- Escalation reason is logged with the report
+
+**Deterministic escalation rules (on top of AI)**
+
+Some escalations are too critical to leave to model judgment:
+
+| Trigger | Action |
+|---|---|
+| Water near electrical equipment | Force severity to critical, escalate immediately |
+| Fire door / blocked egress / smoke | Force severity to critical, escalate to life-safety team |
+| Recurring issue (happenedBefore or prior work orders found) | Bump severity, log escalation reason |
+| Multiple users or occupied classroom affected | Increase priority |
+| Reporter confirms still happening or worse | Reopen and escalate automatically |
+
+These rules are centralized in `lib/challenge2/escalation.ts` and always run after the AI response.
+
+---
+
+## Demo scenario
+
+Open the dashboard → scroll to **"Room too hot"** → click the row → **"Add field signal to this work order"**.
+
+The intake auto-fills with:
+
+> *Room 304 has been extremely hot after 11 AM for the last three school days. Students are complaining of headaches and the teacher has been keeping the hallway door open. It is still happening today.*
+
+Submit → the Field Intelligence Report shows:
+
+- **Issue**: Recurring HVAC Overheating — Localized Thermal Comfort Failure
+- **Severity**: CRITICAL (bumped from high because it is recurring with prior work orders found)
+- **Do now**: Dispatch HVAC technician to Room 304 today — inspect VAV box, damper actuator, and zone thermostat
+- Cleaned description with full context
+- 5 specific root-cause candidates
+- BMS trend data and evidence checklist
+- NYC compliance implications (DOE health and safety, ASHRAE 55)
+- Escalation to HVAC/Mechanical Controls Team
+
+Then click **"Mark for Closure Verification"** → select **"Still a problem"** → see automatic escalation fire.
+
+A second demo scenario for **"Bathroom smell"** (plumbing/sanitary/drainage) is also pre-loaded.
+
+---
 
 ## Setup
 
 ```bash
-cp .env.example .env      # fill in CA_CLIENT_ID / CA_CLIENT_SECRET / CA_API_URL
+cp .env.example .env.local
+# Fill in:
+#   CA_API_URL=https://350grand.stg.criticalasset.com/api
+#   CA_CLIENT_ID=ca_...
+#   CA_CLIENT_SECRET=...
+#   ANTHROPIC_API_KEY=sk-ant-...    # optional — falls back to deterministic mock
+
 npm install
-npm run dev               # http://localhost:3000
+npm run dev        # http://localhost:3000
 ```
 
-`npm run build && npm run start` for a production build. `npm test` runs the unit tests.
+`npm run build && npm start` for production. `npm test` runs 34 unit tests.
+
+If `ANTHROPIC_API_KEY` is not set, the system uses a keyword-based deterministic fallback that produces valid structured output for all demo scenarios. The AI path is a drop-in replacement — no UI change required.
+
+---
 
 ## Architecture
 
 ```
-Browser (React dashboard)  ──fetch /api/*──►  Next.js API routes
-                                                ├─ lib/ca/token.ts   mint + cache + refresh token
-                                                ├─ lib/ca/client.ts  GraphQL POST (401/429 retry)
-                                                ├─ lib/normalize.ts  raw → clean WorkOrder DTO
-                                                ├─ lib/select.ts     counters / buildings / categories
-                                                ├─ lib/signals.ts    data/signals.json store
-                                                └─ lib/mock.ts        demo dataset
-                                                       │
-                                                       ▼
-                                          CriticalAsset GraphQL (staging)
+Browser (React / Next.js App Router)
+  │
+  └─ fetch /api/* ──────────────────────────────────────────────────►  Next.js API routes (server-side)
+                                                                          │
+                                    ┌─────────────────────────────────────┤
+                                    │                                     │
+                              Challenge 01                          Challenge 02
+                                    │                                     │
+                         lib/ca/token.ts          lib/ai/intake.ts   (Claude Sonnet)
+                         lib/ca/client.ts         lib/publicdata.ts  (NYC 311)
+                         lib/normalize.ts         lib/reports.ts     (JSON store)
+                         lib/select.ts            lib/challenge2/    (deterministic rules)
+                         lib/signals.ts
+                         lib/mock.ts
+                                    │
+                                    ▼
+                         CriticalAsset GraphQL API
+                         (350 Grand staging)
 ```
 
-The browser only ever talks to our `/api/*` routes — the client secret and the upstream
-GraphQL URL never reach it.
+The browser never sees the CriticalAsset secret, the CA API URL, or the Anthropic key. All three are server-side only.
 
 ### API routes
 
-| Route | Purpose |
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/workorders` | GET | Filtered work-order list + live error |
+| `/api/workorders/:id` | GET | Single work order with assets and signals |
+| `/api/summary` | GET | Counter and category totals |
+| `/api/buildings` | GET | Buildings ranked by open work orders |
+| `/api/signals` | GET / POST | List or submit a student signal |
+| `/api/intake` | POST | Generate a Field Intelligence Report |
+| `/api/intake/:id` | GET / PATCH | Fetch a report or record closure status |
+| `/api/chat` | POST | Dashboard assistant (ChatBot) |
+| `/api/cluster` | POST | Cross-building issue clustering |
+| `/api/workorders/draft` | POST | AI-assisted work order creation |
+
+### Key source files
+
+| File | Purpose |
 |---|---|
-| `GET /api/workorders?status=&priority=&buildingId=&demo=` | filtered work-order list |
-| `GET /api/workorders/:id?demo=` | single work order + assets + signals |
-| `GET /api/summary?demo=` | counters + category counts |
-| `GET /api/buildings?demo=` | buildings ranked by open work orders |
-| `GET/POST /api/signals` | list / submit a student signal |
-| `POST /api/intake` | AI field-intake → Field Intelligence Report (Challenge 02) |
-| `GET/PATCH /api/intake/:id` | fetch a report / record the student closure confirmation |
+| `lib/ai/intake.ts` | Core AI call — builds prompt, passes photo as vision input, returns Zod-validated report |
+| `lib/ai/schema.ts` | Zod schema for `FieldIntelligenceReport` |
+| `lib/publicdata.ts` | NYC 311 Socrata query, timeboxed, never throws |
+| `lib/challenge2/enrich.ts` | Deterministic enrichment fallback + Claude API path |
+| `lib/challenge2/escalation.ts` | Rule-based escalation logic applied on top of AI output |
+| `lib/challenge2/obligations.ts` | Issue type → compliance obligation mapping |
+| `lib/challenge2/history.ts` | Historical work order matching by building + category + keyword |
+| `app/components/IntakeTool.tsx` | Field intake form + report view + closure UI |
+| `app/components/Dashboard.tsx` | Main dashboard, hero banner, work order table |
 
-## Notes & known limitations
+---
 
-- **Category** uses the work order's `workOrderServiceCategory` enum; the `Asset` type has
-  no `category` field. Asset enrichment uses `asset.status` and `asset.lastServiceDate`.
-- **Assignees** are shown as IDs only. The upstream `users` resolver is broken in staging
-  (`column u.phone does not exist`), so names aren't resolved.
-- Signals are stored locally (`data/signals.json`), not written back to CriticalAsset.
-- **Security:** runs on the latest patched Next 14.2.x. Some `npm audit` advisories remain
-  (Next → only fixed by a major upgrade to 16; vitest/esbuild → dev-tooling only). Revisit
-  before any production deployment.
+## Additional features
 
-See `docs/superpowers/specs/2026-06-05-studentsignals-dashboard-design.md` for the full design.
+**3D building map** — Three.js visualization of buildings with work-order heat as bar height. Click a building to filter the table.
+
+**Cross-building clustering** (`Group similar`) — Sends open work orders to Claude, which identifies patterns across buildings and suggests a single coordinated response.
+
+**AI work order creation** — `Create work order` uses Claude to draft a structured work order from a free-text description.
+
+**Dashboard assistant** — Floating chat interface that can answer questions about the current work order data.
+
+---
+
+## Known limitations
+
+- Assignee names are not resolved — the upstream `users` resolver in staging has a schema bug (`column u.phone does not exist`). IDs are shown instead.
+- Signals and reports are stored locally (`data/signals.json`, `data/reports.json`), not written back to CriticalAsset.
+- NYC 311 data is citywide pattern data — it is not filtered to this specific building address. The AI is instructed to be honest about this.
+- `npm audit` shows some advisories: Next.js (only resolved in a major upgrade to v16) and vitest/esbuild (dev tooling only). Not a concern for a hackathon demo; revisit before production.
+
+---
+
+## Judging criteria alignment
+
+| Criterion | Points | What we built |
+|---|---|---|
+| Quality of student signal capture | 25 | Mobile-friendly intake: photo first, one textarea, toggle buttons — no government forms |
+| AI enrichment and structuring | 25 | Claude Sonnet with adaptive thinking, Zod schema, vision for photos, 13 structured fields |
+| Workflow usefulness | 20 | Numbered action steps, evidence checklist, assignment group, escalation rules |
+| Compliance and public-data context | 15 | NYC 311 real data, obligation mapping (fire code / NFPA / DOE SOP / Local Law 97) |
+| Feedback and closure loop | 10 | Three-state closure (fixed / still happening / worse), auto-escalation on non-resolution |
+| Demo and storytelling | 5 | Hero banner with before/after, two pre-loaded demo scenarios, clear narrative |
