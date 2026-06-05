@@ -92,11 +92,12 @@ async function requestToken(): Promise<TokenCache> {
 }
 
 export async function getCriticalAssetAccessToken(): Promise<string> {
+  const currentToken = cachedToken;
   const tokenStillValid =
-    cachedToken && cachedToken.expiresAt - TOKEN_REFRESH_SKEW_MS > Date.now();
+    currentToken !== null && currentToken.expiresAt - TOKEN_REFRESH_SKEW_MS > Date.now();
 
   if (tokenStillValid) {
-    return cachedToken.accessToken;
+    return currentToken.accessToken;
   }
 
   if (!tokenRequest) {
