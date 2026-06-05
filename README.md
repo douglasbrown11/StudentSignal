@@ -34,6 +34,13 @@ Required variables:
 - `CA_CLIENT_ID`
 - `CA_CLIENT_SECRET`
 
+Optional endpoint overrides:
+
+- `CA_GRAPHQL_URL`
+- `CA_SCOPES`
+
+CriticalAsset exchanges credentials for an access token through a GraphQL mutation on the same `/api` endpoint used for data requests. The development endpoint from the technical manual is `https://company-dev.criticalasset.com/api`.
+
 ## API route
 
 - `GET /api/work-orders?limit=5`
