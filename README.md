@@ -6,6 +6,20 @@ A work order is only a record of what someone managed to write down. **StudentSi
 
 ---
 
+## Screenshots
+
+![Dashboard — work order table with signal quality indicators and hero banner](screenshots/dashboard.png)
+
+![Field intake — photo upload and plain-language observation form](screenshots/intake.png)
+
+![Field Intelligence Report — structured analysis with DO NOW callout, severity scorecard, and escalation](screenshots/report.png)
+
+![Before and after — weak work order enriched with field signal](screenshots/before-after.png)
+
+> To add screenshots: take them at 1280px+ width with demo data ON, save to a `/screenshots` folder in the repo, and the images above will appear automatically.
+
+---
+
 ## The problem
 
 A facilities team at 350 Grand Street opens their work order queue and sees:
