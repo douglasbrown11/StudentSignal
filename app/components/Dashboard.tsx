@@ -9,6 +9,11 @@ import {
   topBuildings,
 } from "@/lib/select";
 import type { WorkOrder } from "@/lib/types";
+import IntakeTool from "./IntakeTool";
+import ClusterTool from "./ClusterTool";
+import ChatBot from "./ChatBot";
+import Building3D from "./Building3D";
+import CreateWorkOrder from "./CreateWorkOrder";
 
 const CATEGORY_LABELS: Record<string, string> = {
   hvac: "HVAC",
@@ -55,6 +60,10 @@ export default function Dashboard() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [intakeWOId, setIntakeWOId] = useState<string | null>(null);
+  const [clusterOpen, setClusterOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,6 +102,20 @@ export default function Dashboard() {
 
   const selected = workOrders.find((w) => w.id === selectedId) ?? null;
   const openWorkOrders = useMemo(() => workOrders.filter(isOpen), [workOrders]);
+  const buildingOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const w of workOrders) {
+      if (w.location?.id && w.location.name) m.set(w.location.id, w.location.name);
+    }
+    return [...m.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [workOrders]);
+  const exitSignId =
+    workOrders.find((w) => /exit sign/i.test(w.title))?.id ?? openWorkOrders[0]?.id ?? null;
+
+  const openIntake = (woId: string | null) => {
+    setIntakeWOId(woId);
+    setIntakeOpen(true);
+  };
 
   const buildingName = buildingFilter
     ? workOrders.find((w) => w.location?.id === buildingFilter)?.location?.name
@@ -112,10 +135,21 @@ export default function Dashboard() {
           </h1>
           <div className="sub">Work orders · CriticalAsset · 350 Grand staging</div>
         </div>
-        <label className="toggle">
-          <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
-          Show demo data
-        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <button className="create-launch" onClick={() => setCreateOpen(true)}>
+            ➕ New work order
+          </button>
+          <button className="cluster-launch" onClick={() => setClusterOpen(true)}>
+            🧩 Group similar (AI)
+          </button>
+          <button className="intake-launch" onClick={() => openIntake(exitSignId)}>
+            ⚡ Field Intake (AI)
+          </button>
+          <label className="toggle">
+            <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} />
+            Show demo data
+          </label>
+        </div>
       </div>
 
       {liveError && (
@@ -218,6 +252,7 @@ export default function Dashboard() {
                     <td className="title-cell">
                       {w.title}
                       {w.source === "demo" && <span className="demo-tag">demo</span>}
+                      {w.source === "user" && <span className="user-tag">yours</span>}
                       {w.signals.length > 0 && <span className="sig-badge">💬 {w.signals.length}</span>}
                     </td>
                     <td>
@@ -235,8 +270,10 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Right: buildings, categories, signal form */}
+        {/* Right: 3D map, buildings, categories, signal form */}
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <Building3D workOrders={workOrders} selectedId={selectedId} onSelect={setSelectedId} />
+
           <div className="panel">
             <h2>Top 5 Buildings · open work orders</h2>
             {buildings.length === 0 && <div className="muted">No buildings yet.</div>}
@@ -273,15 +310,59 @@ export default function Dashboard() {
       </div>
 
       {selected && (
-        <DetailPanel workOrder={selected} onClose={() => setSelectedId(null)} />
+        <DetailPanel
+          workOrder={selected}
+          onClose={() => setSelectedId(null)}
+          onAct={() => {
+            const id = selected.id;
+            setSelectedId(null);
+            openIntake(id);
+          }}
+        />
       )}
+
+      <IntakeTool
+        open={intakeOpen}
+        onClose={() => setIntakeOpen(false)}
+        openWorkOrders={openWorkOrders}
+        defaultWorkOrderId={intakeWOId}
+        demo={demo}
+      />
+
+      <ClusterTool
+        open={clusterOpen}
+        onClose={() => setClusterOpen(false)}
+        workOrders={workOrders}
+        demo={demo}
+      />
+
+      <CreateWorkOrder
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        buildings={buildingOptions}
+        onCreated={async (wo) => {
+          await load();
+          setSelectedId(wo.id);
+          showToast(`Work order "${wo.title}" created`);
+        }}
+      />
+
+      <ChatBot demo={demo} />
 
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }
 
-function DetailPanel({ workOrder: w, onClose }: { workOrder: WorkOrder; onClose: () => void }) {
+function DetailPanel({
+  workOrder: w,
+  onClose,
+  onAct,
+}: {
+  workOrder: WorkOrder;
+  onClose: () => void;
+  onAct: () => void;
+}) {
   return (
     <div className="overlay" onClick={onClose}>
       <div className="detail" onClick={(e) => e.stopPropagation()}>
@@ -289,6 +370,9 @@ function DetailPanel({ workOrder: w, onClose }: { workOrder: WorkOrder; onClose:
           ×
         </button>
         <h3>{w.title}</h3>
+        <button className="act-btn" onClick={onAct}>
+          ⚡ Act on this with AI — capture field truth
+        </button>
         <div className="meta-row">
           <span className={`badge s-${w.status.replace(" ", ".")}`}>{w.status}</span>
           {w.isOverdue && <span className="badge s-overdue">overdue</span>}

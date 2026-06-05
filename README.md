@@ -19,6 +19,29 @@ observations ("signals") to open work orders.
 - **Demo data toggle** — merges a labeled mock dataset (5 buildings, several categories)
   with the live data so the views have substance beyond the few real staging records.
 
+### Challenge 02 — AI field-intake & workflow
+
+A work order is only a record of what someone captured. The **Field Intake (AI)** tool
+(launch from the header, or "Act on this with AI" inside a work-order detail panel) lets a
+student/field user report what's really happening in one sentence, and uses **Claude Opus
+4.8** (adaptive thinking, Zod-validated structured output) to turn it into a **Field
+Intelligence Report**:
+
+- structured signal — issue type, severity, urgency, affected users, **evidence quality**,
+  likely root causes, **what the system still doesn't know**, follow-up questions
+- cleaned-up work-order description
+- **public-data context** — best-effort real **NYC 311** open-data lookup, translated into
+  operational meaning (and honest when records aren't relevant — it won't fabricate)
+- **compliance & obligations** to check before closure (fire code, NFPA, inspections, SOPs)
+- operational implications, recommended workflow, assignment group, **evidence checklist**
+- **escalation logic** (safety / recurrence / compliance / unresolved)
+- a plain-language **student status message** + a **closure verification question**, so the
+  reporter can later confirm whether reality actually changed (the closure loop).
+
+Backend: `POST /api/intake` (resolve WO context → NYC 311 → one structured Claude call →
+persist), `PATCH /api/intake/:id` (closure). The Anthropic key stays server-side, never
+sent to the browser — same boundary as the CriticalAsset secret.
+
 ## Setup
 
 ```bash
@@ -56,6 +79,8 @@ GraphQL URL never reach it.
 | `GET /api/summary?demo=` | counters + category counts |
 | `GET /api/buildings?demo=` | buildings ranked by open work orders |
 | `GET/POST /api/signals` | list / submit a student signal |
+| `POST /api/intake` | AI field-intake → Field Intelligence Report (Challenge 02) |
+| `GET/PATCH /api/intake/:id` | fetch a report / record the student closure confirmation |
 
 ## Notes & known limitations
 
