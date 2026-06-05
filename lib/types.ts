@@ -37,7 +37,7 @@ export interface WorkOrder {
   location: LocationRef | null;
   assets: AssetRef[];
   assigneeIds: string[];
-  source: "live" | "demo";
+  source: "live" | "demo" | "user";
   signals: Signal[];
 }
 

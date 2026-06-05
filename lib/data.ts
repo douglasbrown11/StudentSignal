@@ -6,6 +6,7 @@ import { LIST_WORK_ORDERS } from "./ca/queries";
 import { mockWorkOrders } from "./mock";
 import { normalizeWorkOrder } from "./normalize";
 import { groupSignals, listSignals } from "./signals";
+import { listUserWorkOrders } from "./workorders-store";
 import type { WorkOrder } from "./types";
 
 export interface WorkOrdersResult {
@@ -31,9 +32,15 @@ export async function getWorkOrders(demo: boolean): Promise<WorkOrdersResult> {
     liveError = err instanceof CAError ? err.message : (err as Error).message;
   }
 
+  // User-created work orders are the operator's own real records — always shown,
+  // regardless of the demo toggle. Newest first so a just-added one is visible.
+  const userOrders = (await listUserWorkOrders())
+    .map(hydrate)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+
   const demoOrders = demo ? mockWorkOrders().map(hydrate) : [];
 
-  return { workOrders: [...live, ...demoOrders], liveError };
+  return { workOrders: [...userOrders, ...live, ...demoOrders], liveError };
 }
 
 export async function getWorkOrder(id: string, demo: boolean): Promise<WorkOrder | null> {

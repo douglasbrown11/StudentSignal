@@ -240,6 +240,7 @@ function ReportView({ result, onNew }: { result: IntakeResult; onNew: () => void
   const esc = r.recommendedWorkflow.escalation;
   const [closed, setClosed] = useState<null | boolean>(null);
   const [closing, setClosing] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const confirm = async (resolved: boolean) => {
     setClosing(true);
@@ -258,7 +259,7 @@ function ReportView({ result, onNew }: { result: IntakeResult; onNew: () => void
   return (
     <div className="report">
       <div className="report-head">
-        <h3>🛰️ Field Intelligence Report</h3>
+        <h3>🛰️ Field Intelligence</h3>
         <button className="btn secondary" onClick={onNew}>
           + New report
         </button>
@@ -270,86 +271,105 @@ function ReportView({ result, onNew }: { result: IntakeResult; onNew: () => void
         </div>
       )}
 
+      {/* TL;DR — the only things you must read */}
+      <div className="tldr">
+        {r.headline && <div className="tldr-headline">{r.headline}</div>}
+        {r.bottomLine && (
+          <div className="tldr-bottom">
+            <span className="tldr-k">Do now</span> {r.bottomLine}
+          </div>
+        )}
+      </div>
+
       <div className="pills">
-        <Pill label="Issue" value={s.issueType} />
         <Pill label="Severity" value={s.severity} tone={sevTone(s.severity)} />
         <Pill label="Urgency" value={s.urgency.replace("_", " ")} tone={sevTone(s.urgency)} />
         <Pill label="Category" value={s.assetCategory.replace(/_/g, " ")} />
         <Pill label="Evidence" value={s.evidenceQuality} tone={s.evidenceQuality === "strong" ? "ok" : "warn"} />
       </div>
 
-      <Section title="Cleaned work-order description">
-        <p>{r.cleanedDescription}</p>
-      </Section>
-
-      <div className="report-cols">
-        <Section title="Location">
-          <p className="muted">{s.locationDetail}</p>
-        </Section>
-        <Section title="Affected">
-          <p className="muted">{s.affectedUsers}</p>
-        </Section>
-      </div>
-
-      <Section title="Likely root causes">
-        <ul>{s.likelyRootCauses.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
-      </Section>
-
-      <div className="report-cols">
-        <Section title="What the system still doesn't know">
-          <ul>{s.missingInformation.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
-        </Section>
-        <Section title="Follow-up questions">
-          <ul>{s.followUpQuestions.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
-        </Section>
-      </div>
-
-      <Section title={`Public data context · ${result.publicData?.source ?? "—"}`}>
-        <p>{r.publicData.operationalMeaning}</p>
-        {r.publicData.references?.length > 0 ? (
-          <ul>
-            {r.publicData.references.map((x: any, i: number) => (
-              <li key={i}>
-                <b>{x.source}:</b> {x.detail}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted" style={{ fontSize: 12 }}>
-            No directly-relevant public records linked{result.publicData?.note ? ` (${result.publicData.note})` : ""}.
-          </p>
-        )}
-      </Section>
-
-      <Section title="Compliance & obligations to check before closure">
-        {r.compliance.map((c: any, i: number) => (
-          <div key={i} className="oblig">
-            <div className="oblig-top">
-              <b>{c.obligation}</b>
-              <span className="oblig-src">{c.source}</span>
-            </div>
-            <div className="muted" style={{ fontSize: 12 }}>{c.why}</div>
-          </div>
-        ))}
-      </Section>
-
-      <Section title="Operational implications">
-        <ul>{r.operationalImplications.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
-      </Section>
-
-      <Section title={`Recommended workflow · assign to ${r.recommendedWorkflow.suggestedAssignmentGroup}`}>
+      <Section title={`Next steps · ${r.recommendedWorkflow.suggestedAssignmentGroup}`}>
         <ol>{r.recommendedWorkflow.suggestedNextActions.map((x: string, i: number) => <li key={i}>{x}</li>)}</ol>
-        <div className="checklist">
-          <div className="checklist-h">Evidence checklist</div>
-          {r.recommendedWorkflow.evidenceChecklist.map((x: string, i: number) => (
-            <label key={i} className="check"><input type="checkbox" /> {x}</label>
-          ))}
-        </div>
       </Section>
 
       <Section title="Message to the reporter">
         <p className="student-msg">{r.studentStatusMessage}</p>
       </Section>
+
+      <button className="details-toggle" onClick={() => setShowDetails((v) => !v)}>
+        {showDetails ? "▾ Hide full analysis" : "▸ Show full analysis"}
+      </button>
+
+      {showDetails && (
+        <div className="details-body">
+          <Section title="What this is">
+            <p>{r.cleanedDescription}</p>
+          </Section>
+
+          <div className="report-cols">
+            <Section title="Location">
+              <p className="muted">{s.locationDetail}</p>
+            </Section>
+            <Section title="Affected">
+              <p className="muted">{s.affectedUsers}</p>
+            </Section>
+          </div>
+
+          <Section title="Likely root causes">
+            <ul>{s.likelyRootCauses.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
+          </Section>
+
+          <div className="report-cols">
+            <Section title="Still unknown">
+              <ul>{s.missingInformation.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
+            </Section>
+            <Section title="Ask the reporter">
+              <ul>{s.followUpQuestions.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
+            </Section>
+          </div>
+
+          <Section title={`Public data · ${result.publicData?.source ?? "—"}`}>
+            <p>{r.publicData.operationalMeaning}</p>
+            {r.publicData.references?.length > 0 ? (
+              <ul>
+                {r.publicData.references.map((x: any, i: number) => (
+                  <li key={i}>
+                    <b>{x.source}:</b> {x.detail}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted" style={{ fontSize: 12 }}>
+                No directly-relevant public records linked{result.publicData?.note ? ` (${result.publicData.note})` : ""}.
+              </p>
+            )}
+          </Section>
+
+          <Section title="Check before closing">
+            {r.compliance.map((c: any, i: number) => (
+              <div key={i} className="oblig">
+                <div className="oblig-top">
+                  <b>{c.obligation}</b>
+                  <span className="oblig-src">{c.source}</span>
+                </div>
+                <div className="muted" style={{ fontSize: 12 }}>{c.why}</div>
+              </div>
+            ))}
+          </Section>
+
+          <Section title="If left unaddressed">
+            <ul>{r.operationalImplications.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul>
+          </Section>
+
+          <Section title="Evidence checklist">
+            <div className="checklist">
+              {r.recommendedWorkflow.evidenceChecklist.map((x: string, i: number) => (
+                <label key={i} className="check"><input type="checkbox" /> {x}</label>
+              ))}
+            </div>
+          </Section>
+        </div>
+      )}
 
       <div className="closure">
         <div className="closure-q">🔁 {r.closureVerificationQuestion}</div>

@@ -1,6 +1,6 @@
 // The AI layer: turn a raw field observation (+ work-order/asset/location context
 // + public data) into a structured, compliance-aware, action-ready Field
-// Intelligence Report. One structured Claude call (Opus 4.8, adaptive thinking,
+// Intelligence Report. One structured Claude call (Sonnet 4.6, adaptive thinking,
 // Zod-validated output) — no free-text parsing.
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -34,7 +34,12 @@ Principles:
 - Recommend a concrete workflow and a clear escalation decision. Escalate when there is a safety, recurrence, compliance, or unresolved-status reason.
 - The student who reported it must not disappear after intake. Write them a warm, plain-language status message, and produce a single yes/no closure-verification question to ask them later to confirm reality actually changed.
 
-Respond ONLY by populating the required structured fields. Be concise but concrete.`;
+WRITE FOR A BUSY OPERATOR ON A PHONE. Be ruthlessly concise:
+- Lead with a scannable headline and a single "bottom line" sentence (what to do now, by when).
+- Every list item is a short phrase or one imperative line — never a paragraph. Respect the "at most N" limits in the schema; fewer, sharper items beat long lists.
+- No hedging, no restating the question, no filler. Plain language a 9th grader reads in seconds.
+
+Respond ONLY by populating the required structured fields.`;
 
 function block(label: string, value: unknown): string {
   return `### ${label}\n${typeof value === "string" ? value : JSON.stringify(value, null, 2)}`;
@@ -88,7 +93,7 @@ export async function generateReport(args: {
   ].join("\n");
 
   const message = await client.messages.parse({
-    model: "claude-opus-4-8",
+    model: "claude-sonnet-4-6",
     max_tokens: 6000,
     thinking: { type: "adaptive" },
     system: SYSTEM,
