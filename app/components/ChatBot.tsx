@@ -14,8 +14,65 @@ const SUGGESTED = [
   "Suggest a likely fix for the most urgent issue",
 ];
 
+// Simple inline markdown → React elements (bold, italic, inline code, line breaks)
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+
+  lines.forEach((line, li) => {
+    if (li > 0) nodes.push(<br key={`br-${li}`} />);
+
+    // Heading
+    if (/^###\s/.test(line)) {
+      nodes.push(<strong key={li} style={{ display: "block", marginTop: 8, fontSize: 13 }}>{line.replace(/^###\s/, "")}</strong>);
+      return;
+    }
+    if (/^##\s/.test(line)) {
+      nodes.push(<strong key={li} style={{ display: "block", marginTop: 10, fontSize: 14 }}>{line.replace(/^##\s/, "")}</strong>);
+      return;
+    }
+
+    // List item
+    const isList = /^[-*]\s/.test(line);
+    const content = isList ? line.replace(/^[-*]\s/, "") : line;
+
+    const inline = parseInline(content);
+    if (isList) {
+      nodes.push(
+        <span key={li} style={{ display: "block", paddingLeft: 12 }}>
+          <span style={{ color: "var(--accent)", marginRight: 6 }}>·</span>
+          {inline}
+        </span>
+      );
+    } else {
+      nodes.push(<span key={li}>{inline}</span>);
+    }
+  });
+
+  return nodes;
+}
+
+function parseInline(text: string): React.ReactNode[] {
+  // Split on **bold**, *italic*, `code` in order
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[2]) parts.push(<strong key={m.index}>{m[2]}</strong>);
+    else if (m[3]) parts.push(<em key={m.index}>{m[3]}</em>);
+    else if (m[4]) parts.push(<code key={m.index} style={{ background: "rgba(255,255,255,0.08)", borderRadius: 3, padding: "1px 4px", fontSize: 12 }}>{m[4]}</code>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 export default function ChatBot({ demo }: { demo: boolean }) {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -59,15 +116,23 @@ export default function ChatBot({ demo }: { demo: boolean }) {
   }
 
   return (
-    <div className="chat-dock">
+    <div className={`chat-dock ${expanded ? "chat-dock-expanded" : ""}`}>
       <div className="chat-head">
         <div>
           <b>Dashboard Assistant</b>
           <span className="chat-model">AI</span>
         </div>
-        <button className="chat-x" onClick={() => setOpen(false)}>
-          ×
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button
+            className="chat-x"
+            title={expanded ? "Shrink" : "Expand"}
+            onClick={() => setExpanded((v) => !v)}
+            style={{ fontSize: 14, opacity: 0.7 }}
+          >
+            {expanded ? "⊠" : "⊞"}
+          </button>
+          <button className="chat-x" onClick={() => setOpen(false)}>×</button>
+        </div>
       </div>
 
       <div className="chat-body" ref={scrollRef}>
@@ -88,16 +153,14 @@ export default function ChatBot({ demo }: { demo: boolean }) {
 
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
-            {m.content}
+            {m.role === "assistant" ? renderMarkdown(m.content) : m.content}
           </div>
         ))}
 
         {busy && (
           <div className="chat-msg assistant">
             <span className="chat-typing">
-              <span></span>
-              <span></span>
-              <span></span>
+              <span></span><span></span><span></span>
             </span>
           </div>
         )}
@@ -111,10 +174,9 @@ export default function ChatBot({ demo }: { demo: boolean }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send(input)}
           disabled={busy}
+          autoFocus
         />
-        <button className="btn" disabled={busy || !input.trim()} onClick={() => send(input)}>
-          ↑
-        </button>
+        <button className="btn" disabled={busy || !input.trim()} onClick={() => send(input)}>↑</button>
       </div>
     </div>
   );
