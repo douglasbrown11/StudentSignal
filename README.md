@@ -8,15 +8,17 @@ A work order is only a record of what someone managed to write down. **StudentSi
 
 ## Screenshots
 
-![Dashboard — work order table with signal quality indicators and hero banner](screenshots/dashboard.png)
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 29 40 PM" src="https://github.com/user-attachments/assets/690d9204-e664-4b4d-b385-7fdafb12f2eb" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 30 13 PM" src="https://github.com/user-attachments/assets/a7dfcaca-b39d-42fb-a678-f6b8cfa14662" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 30 33 PM" src="https://github.com/user-attachments/assets/b5194da3-9836-4419-b049-2df2c665cbee" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 32 29 PM" src="https://github.com/user-attachments/assets/77e1043c-6bd8-4629-9ad2-55362632fdeb" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 33 19 PM" src="https://github.com/user-attachments/assets/b18fc5a7-da1a-4ca7-8039-34894040db45" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 33 46 PM" src="https://github.com/user-attachments/assets/706c0857-aab6-42cb-a3e1-4d8daba7e2eb" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 33 58 PM" src="https://github.com/user-attachments/assets/ba0265c8-3cbd-465b-825e-510a2e18c3aa" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 35 10 PM" src="https://github.com/user-attachments/assets/a94b560f-8d4f-4b40-8fde-f6a0b6ded196" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 43 20 PM" src="https://github.com/user-attachments/assets/50691672-0ca6-4f75-a019-f5c2b95dc017" />
+<img width="3456" height="2234" alt="Screenshot 2026-06-05 at 6 43 29 PM" src="https://github.com/user-attachments/assets/bd6cf4e3-f3fd-4c9a-a67c-7fe942cb4f7c" />
 
-![Field intake — photo upload and plain-language observation form](screenshots/intake.png)
-
-![Field Intelligence Report — structured analysis with DO NOW callout, severity scorecard, and escalation](screenshots/report.png)
-
-![Before and after — weak work order enriched with field signal](screenshots/before-after.png)
-
-> To add screenshots: take them at 1280px+ width with demo data ON, save to a `/screenshots` folder in the repo, and the images above will appear automatically.
 
 ---
 
